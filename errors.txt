@@ -1,0 +1,238 @@
+    Checking quelana_gemini_assistant v0.1.0 (C:\development\Quelana)
+error[E0308]: mismatched types
+   --> src\main.rs:112:74
+    |
+112 |         let response = match send_to_gemini(&client, &api_url, &api_key, question, args.max_output_tokens).await {
+    |                              --------------                              ^^^^^^^^ expected `&str`, found `String`
+    |                              |
+    |                              arguments to this function are incorrect
+    |
+note: function defined here
+   --> src\main.rs:144:10
+    |
+144 | async fn send_to_gemini(
+    |          ^^^^^^^^^^^^^^
+...
+148 |     prompt: &str,
+    |     ------------
+help: consider borrowing here
+    |
+112 |         let response = match send_to_gemini(&client, &api_url, &api_key, &question, args.max_output_tokens).await {
+    |                                                                          +
+
+error[E0061]: this method takes 4 arguments but 3 arguments were supplied
+   --> src\main.rs:260:43
+    |
+260 |           cpal::SampleFormat::F32 => device.build_input_stream(
+    |  ___________________________________________^^^^^^^^^^^^^^^^^^-
+261 | |             &config,
+262 | |             move |data: &[f32], _| {
+263 | |                 let mut w = writer_cloned.lock().unwrap();
+...   |
+269 | |             err_fn,
+270 | |         )?,
+    | |_________- argument #4 of type `Option<Duration>` is missing
+    |
+note: method defined here
+   --> C:\Users\stann\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\cpal-0.15.3\src\traits.rs:125:8
+    |
+125 |     fn build_input_stream<T, D, E>(
+    |        ^^^^^^^^^^^^^^^^^^
+help: provide the argument
+    |
+260 |         cpal::SampleFormat::F32 => device.build_input_stream(
+...
+269 |             err_fn,
+270 ~             /* Option<Duration> */,
+271 ~         )?,
+    |
+
+error[E0061]: this method takes 4 arguments but 3 arguments were supplied
+   --> src\main.rs:271:43
+    |
+271 |           cpal::SampleFormat::I16 => device.build_input_stream(
+    |  ___________________________________________^^^^^^^^^^^^^^^^^^-
+272 | |             &config,
+273 | |             move |data: &[i16], _| {
+274 | |                 let mut w = writer_cloned.lock().unwrap();
+...   |
+279 | |             err_fn,
+280 | |         )?,
+    | |_________- argument #4 of type `Option<Duration>` is missing
+    |
+note: method defined here
+   --> C:\Users\stann\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\cpal-0.15.3\src\traits.rs:125:8
+    |
+125 |     fn build_input_stream<T, D, E>(
+    |        ^^^^^^^^^^^^^^^^^^
+help: provide the argument
+    |
+271 |         cpal::SampleFormat::I16 => device.build_input_stream(
+...
+279 |             err_fn,
+280 ~             /* Option<Duration> */,
+281 ~         )?,
+    |
+
+error[E0061]: this method takes 4 arguments but 3 arguments were supplied
+   --> src\main.rs:281:43
+    |
+281 |           cpal::SampleFormat::U16 => device.build_input_stream(
+    |  ___________________________________________^^^^^^^^^^^^^^^^^^-
+282 | |             &config,
+283 | |             move |data: &[u16], _| {
+284 | |                 let mut w = writer_cloned.lock().unwrap();
+...   |
+290 | |             err_fn,
+291 | |         )?,
+    | |_________- argument #4 of type `Option<Duration>` is missing
+    |
+note: method defined here
+   --> C:\Users\stann\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\cpal-0.15.3\src\traits.rs:125:8
+    |
+125 |     fn build_input_stream<T, D, E>(
+    |        ^^^^^^^^^^^^^^^^^^
+help: provide the argument
+    |
+281 |         cpal::SampleFormat::U16 => device.build_input_stream(
+...
+290 |             err_fn,
+291 ~             /* Option<Duration> */,
+292 ~         )?,
+    |
+
+error[E0061]: this method takes 4 arguments but 3 arguments were supplied
+   --> src\main.rs:336:43
+    |
+336 |           cpal::SampleFormat::F32 => device.build_input_stream(
+    |  ___________________________________________^^^^^^^^^^^^^^^^^^-
+337 | |             &config,
+338 | |             move |data: &[f32], _| {
+339 | |                 let mut w = writer_cloned.lock().unwrap();
+...   |
+345 | |             err_fn,
+346 | |         )?,
+    | |_________- argument #4 of type `Option<Duration>` is missing
+    |
+note: method defined here
+   --> C:\Users\stann\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\cpal-0.15.3\src\traits.rs:125:8
+    |
+125 |     fn build_input_stream<T, D, E>(
+    |        ^^^^^^^^^^^^^^^^^^
+help: provide the argument
+    |
+336 |         cpal::SampleFormat::F32 => device.build_input_stream(
+...
+345 |             err_fn,
+346 ~             /* Option<Duration> */,
+347 ~         )?,
+    |
+
+error[E0061]: this method takes 4 arguments but 3 arguments were supplied
+   --> src\main.rs:347:43
+    |
+347 |           cpal::SampleFormat::I16 => device.build_input_stream(
+    |  ___________________________________________^^^^^^^^^^^^^^^^^^-
+348 | |             &config,
+349 | |             move |data: &[i16], _| {
+350 | |                 let mut w = writer_cloned.lock().unwrap();
+...   |
+355 | |             err_fn,
+356 | |         )?,
+    | |_________- argument #4 of type `Option<Duration>` is missing
+    |
+note: method defined here
+   --> C:\Users\stann\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\cpal-0.15.3\src\traits.rs:125:8
+    |
+125 |     fn build_input_stream<T, D, E>(
+    |        ^^^^^^^^^^^^^^^^^^
+help: provide the argument
+    |
+347 |         cpal::SampleFormat::I16 => device.build_input_stream(
+...
+355 |             err_fn,
+356 ~             /* Option<Duration> */,
+357 ~         )?,
+    |
+
+error[E0061]: this method takes 4 arguments but 3 arguments were supplied
+   --> src\main.rs:357:43
+    |
+357 |           cpal::SampleFormat::U16 => device.build_input_stream(
+    |  ___________________________________________^^^^^^^^^^^^^^^^^^-
+358 | |             &config,
+359 | |             move |data: &[u16], _| {
+360 | |                 let mut w = writer_cloned.lock().unwrap();
+...   |
+366 | |             err_fn,
+367 | |         )?,
+    | |_________- argument #4 of type `Option<Duration>` is missing
+    |
+note: method defined here
+   --> C:\Users\stann\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\cpal-0.15.3\src\traits.rs:125:8
+    |
+125 |     fn build_input_stream<T, D, E>(
+    |        ^^^^^^^^^^^^^^^^^^
+help: provide the argument
+    |
+357 |         cpal::SampleFormat::U16 => device.build_input_stream(
+...
+366 |             err_fn,
+367 ~             /* Option<Duration> */,
+368 ~         )?,
+    |
+
+error[E0277]: `?` couldn't convert the error: `TIError: std::error::Error` is not satisfied
+   --> src\main.rs:410:55
+    |
+409 | fn setup_system_tray(api_url: String, api_key: String, max_output_tokens: usize) -> Result<TrayItem, anyhow::Error> {
+    |                                                                                     ------------------------------- required `TIError: std::error::Error` because of this
+410 |     let mut tray = TrayItem::new("Quelana", "Quelana")?;
+    |                    -----------------------------------^ the trait `std::error::Error` is not implemented for `TIError`
+    |                    |
+    |                    this has type `Result<_, TIError>`
+    |
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+    = note: required for `anyhow::Error` to implement `From<TIError>`
+
+error[E0277]: `?` couldn't convert the error: `TIError: std::error::Error` is not satisfied
+   --> src\main.rs:422:7
+    |
+409 |   fn setup_system_tray(api_url: String, api_key: String, max_output_tokens: usize) -> Result<TrayItem, anyhow::Error> {
+    |                                                                                       ------------------------------- required `TIError: std::error::Error` because of this
+...
+414 |       tray.add_menu_item("Record Question", move || {
+    |  __________-
+415 | |         let api_url = api_url_clone.clone();
+416 | |         let api_key = api_key_clone.clone();
+417 | |         thread::spawn(move || {
+...   |
+421 | |         });
+422 | |     })?;
+    | |      -^ the trait `std::error::Error` is not implemented for `TIError`
+    | |______|
+    |        this has type `Result<_, TIError>`
+    |
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+    = note: required for `anyhow::Error` to implement `From<TIError>`
+
+error[E0277]: `?` couldn't convert the error: `TIError: std::error::Error` is not satisfied
+   --> src\main.rs:425:7
+    |
+409 |   fn setup_system_tray(api_url: String, api_key: String, max_output_tokens: usize) -> Result<TrayItem, anyhow::Error> {
+    |                                                                                       ------------------------------- required `TIError: std::error::Error` because of this
+...
+423 |       tray.add_menu_item("Quit", move || {
+    |  __________-
+424 | |         std::process::exit(0);
+425 | |     })?;
+    | |      -^ the trait `std::error::Error` is not implemented for `TIError`
+    | |______|
+    |        this has type `Result<_, TIError>`
+    |
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+    = note: required for `anyhow::Error` to implement `From<TIError>`
+
+Some errors have detailed explanations: E0061, E0277, E0308.
+For more information about an error, try `rustc --explain E0061`.
+error: could not compile `quelana_gemini_assistant` (bin "quelana_gemini_assistant") due to 10 previous errors
