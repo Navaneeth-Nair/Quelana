@@ -1,3 +1,5 @@
+mod ui;
+
 use anyhow::Result;
 use clap::Parser;
 use dotenv::dotenv;
@@ -5,7 +7,6 @@ use log::{error, info};
 use reqwest::Client;
 use serde_json::Value;
 use std::env;
-use std::io::{self, Write};
 use std::process::Command;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -16,6 +17,7 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use hound;
 use rdev::{listen, Event, EventType, Key};
 use tray_item::TrayItem;
+use ui::{OverlayApp, load_settings};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -28,11 +30,9 @@ struct Args {
 
     #[arg(long, default_value_t = 400)]
     max_output_tokens: usize,
-}
 
-enum AppEvent {
-    RecordRequest,
-    QuitRequested,
+    #[arg(long)]
+    hide_overlay: bool,
 }
 
 #[tokio::main]
@@ -49,14 +49,20 @@ async fn main() -> Result<()> {
     let api_url = args
         .api_url
         .or_else(|| env::var("GEMINI_API_URL").ok())
-        .unwrap_or_default();
+        .unwrap_or_else(|| "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent".to_string());
 
-    if api_key.is_empty() || api_url.is_empty() {
-        error!("Please set GEMINI_API_KEY and GEMINI_API_URL in your environment or pass --api-key/--api-url.");
+    if api_key.is_empty() {
+        error!("Please set GEMINI_API_KEY in your environment or pass --api-key.");
         std::process::exit(1);
     }
 
-    let client = Client::new();
+    if api_url.is_empty() {
+        let fallback = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
+        println!("No API URL provided. Using a standard Gemini-compatible endpoint fallback: {}", fallback);
+        println!("You can override it later with --api-url or GEMINI_API_URL.");
+    }
+
+    let settings = load_settings();
 
     let _tray = match setup_system_tray(api_url.clone(), api_key.clone(), args.max_output_tokens) {
         Ok(tray) => Some(tray),
@@ -68,75 +74,33 @@ async fn main() -> Result<()> {
     start_global_hotkey(api_url.clone(), api_key.clone(), args.max_output_tokens);
 
     info!("Quelana Gemini Assistant started");
-    println!("Quelana Gemini Assistant (user-activated mode)");
-    println!("System tray started. Use tray menu or Ctrl+Shift+R to record a question.");
-    println!("Type a question and press Enter, or type 'quit' to exit.");
+    println!("Quelana Gemini Assistant (background assistant)");
 
-    loop {
-        print!("Question (type message or 'r' to record): ");
-        io::stdout().flush()?;
-        let mut line = String::new();
-        io::stdin().read_line(&mut line)?;
-        let line = line.trim();
-        if line.eq_ignore_ascii_case("quit") {
-            break;
+    if !args.hide_overlay {
+        let native_options = eframe::NativeOptions {
+            viewport: eframe::egui::ViewportBuilder::default()
+                .with_inner_size([420.0, 560.0])
+                .with_always_on_top(),
+            ..Default::default()
+        };
+
+        if let Err(err) = eframe::run_native(
+            "Quelana",
+            native_options,
+            Box::new(move |_cc| {
+                Ok(Box::new(OverlayApp::new(
+                    settings.clone(),
+                    api_url.clone(),
+                    api_key.clone(),
+                    args.max_output_tokens,
+                )))
+            }),
+        ) {
+            return Err(anyhow::anyhow!(err.to_string()));
         }
-
-        let question = if line.eq_ignore_ascii_case("r") {
-            println!("Recording audio for hotkey/tray mode (7 seconds)...");
-            let wav_path = record_audio_timeout(7)?;
-            println!("Saved recording to {}", wav_path.display());
-            let whisper_cmd = env::var("WHISPER_CMD").unwrap_or_default();
-            if whisper_cmd.is_empty() {
-                eprintln!("WHISPER_CMD not configured. Set WHISPER_CMD in environment to a command template containing {{input}}.");
-                continue;
-            }
-            match transcribe_with_whisper_cmd(&whisper_cmd, &wav_path) {
-                Ok(t) => {
-                    println!("Transcription: {}", t);
-                    println!("Press Enter to accept transcript or type edits:");
-                    let mut edited = String::new();
-                    io::stdin().read_line(&mut edited)?;
-                    let edited = edited.trim();
-                    if edited.is_empty() { t } else { edited.to_string() }
-                }
-                Err(e) => {
-                    eprintln!("Transcription failed: {}", e);
-                    continue;
-                }
-            }
-        } else if line.is_empty() {
-            println!("Empty question; skipped.");
-            continue;
-        } else {
-            line.to_string()
-        };
-
-        let response = match send_to_gemini(&client, &api_url, &api_key, &question, args.max_output_tokens).await {
-            Ok(resp) => {
-                println!("Gemini reply:\n{}\n", resp);
-                resp
-            }
-            Err(err) => {
-                eprintln!("Error querying Gemini: {}", err);
-                continue;
-            }
-        };
-
-        if let Ok(tts_cmd) = env::var("TTS_CMD") {
-            if !tts_cmd.trim().is_empty() {
-                println!("Actions: [p]lay TTS, [s]kip");
-                print!("Choose action> ");
-                io::stdout().flush()?;
-                let mut action = String::new();
-                io::stdin().read_line(&mut action)?;
-                let action = action.trim();
-                if action.eq_ignore_ascii_case("p") {
-                    if let Err(e) = speak_with_tts_cmd(&tts_cmd, &response) {
-                        eprintln!("TTS failed: {}", e);
-                    }
-                }
-            }
+    } else {
+        loop {
+            thread::sleep(Duration::from_secs(1));
         }
     }
 
@@ -151,21 +115,31 @@ async fn send_to_gemini(
     max_output_tokens: usize,
 ) -> Result<String> {
     let body = serde_json::json!({
-        "prompt": prompt,
-        "max_output_tokens": max_output_tokens,
+        "contents": [{
+            "parts": [{ "text": prompt }]
+        }],
+        "generationConfig": {
+            "maxOutputTokens": max_output_tokens
+        }
     });
 
-    let resp = client
+    let resp = match client
         .post(api_url)
         .bearer_auth(api_key)
         .json(&body)
         .send()
-        .await?;
+        .await
+    {
+        Ok(resp) => resp,
+        Err(err) => {
+            return Err(anyhow::anyhow!("Unable to reach Gemini endpoint: {}. Check your API URL and network connection.", err));
+        }
+    };
 
     let status = resp.status();
     let text = resp.text().await?;
     if !status.is_success() {
-        return Err(anyhow::anyhow!("API returned {}: {}", status, text));
+        return Err(anyhow::anyhow!("API returned {}: {}. Check your API key and endpoint.", status, text));
     }
 
     if let Ok(json) = serde_json::from_str::<Value>(&text) {
@@ -224,94 +198,6 @@ fn extract_text(value: &Value) -> String {
         }
         other => other.to_string(),
     }
-}
-
-fn record_audio() -> Result<std::path::PathBuf, anyhow::Error> {
-    let host = cpal::default_host();
-    let device = host.default_input_device().ok_or_else(|| anyhow::anyhow!("No input device available"))?;
-    let config = device.default_input_config()?;
-
-    let sample_format = config.sample_format();
-    let config: cpal::StreamConfig = config.into();
-
-    let sample_rate = config.sample_rate.0 as u32;
-    let channels = config.channels as u16;
-
-    let temp = NamedTempFile::new()?;
-    let path = temp.path().to_path_buf();
-    let wav_path = path.with_extension("wav");
-
-    let writer = Arc::new(Mutex::new(Some(hound::WavWriter::create(&wav_path, hound::WavSpec {
-        channels,
-        sample_rate,
-        bits_per_sample: 16,
-        sample_format: hound::SampleFormat::Int,
-    })?)));
-
-    let writer_cloned = writer.clone();
-
-    let err_fn = |err| eprintln!("an error occurred on stream: {}", err);
-
-    let stream = match sample_format {
-        cpal::SampleFormat::F32 => device.build_input_stream(
-            &config,
-            move |data: &[f32], _| {
-                let mut w = writer_cloned.lock().unwrap();
-                if let Some(writer) = w.as_mut() {
-                    for &sample in data {
-                        let s = (sample * i16::MAX as f32) as i16;
-                        let _ = writer.write_sample(s);
-                    }
-                }
-            },
-            err_fn,
-            None,
-        )?,
-        cpal::SampleFormat::I16 => device.build_input_stream(
-            &config,
-            move |data: &[i16], _| {
-                let mut w = writer_cloned.lock().unwrap();
-                if let Some(writer) = w.as_mut() {
-                    for &sample in data {
-                        let _ = writer.write_sample(sample);
-                    }
-                }
-            },
-            err_fn,
-            None,
-        )?,
-        cpal::SampleFormat::U16 => device.build_input_stream(
-            &config,
-            move |data: &[u16], _| {
-                let mut w = writer_cloned.lock().unwrap();
-                if let Some(writer) = w.as_mut() {
-                    for &sample in data {
-                        let s = (sample as i16).wrapping_sub(i16::MIN);
-                        let _ = writer.write_sample(s);
-                    }
-                }
-            },
-            err_fn,
-            None,
-        )?,
-        _ => return Err(anyhow::anyhow!("Unsupported sample format")),
-    };
-
-    stream.play()?;
-
-    let mut stop = String::new();
-    io::stdin().read_line(&mut stop)?;
-
-    drop(stream);
-    let mut w = writer.lock().unwrap();
-    if let Some(writer) = w.as_mut() {
-        writer.flush()?;
-    }
-    if let Some(writer) = w.take() {
-        writer.finalize()?;
-    }
-
-    Ok(wav_path)
 }
 
 fn record_audio_timeout(seconds: u64) -> Result<std::path::PathBuf, anyhow::Error> {
@@ -412,35 +298,27 @@ fn transcribe_with_whisper_cmd(cmd_template: &str, input_wav: &std::path::Path) 
     Ok(out.trim().to_string())
 }
 
-fn speak_with_tts_cmd(cmd_template: &str, text: &str) -> Result<(), anyhow::Error> {
-    let cmd_str = cmd_template.replace("{text}", text);
-    let mut parts = shell_words::split(&cmd_str)?;
-    if parts.is_empty() {
-        return Err(anyhow::anyhow!("TTS command template is empty"));
-    }
-    let prog = parts.remove(0);
-    let output = Command::new(prog).args(parts).output()?;
-    if !output.status.success() {
-        return Err(anyhow::anyhow!("TTS command failed: {}", String::from_utf8_lossy(&output.stderr)));
-    }
-    Ok(())
-}
-
 fn setup_system_tray(api_url: String, api_key: String, max_output_tokens: usize) -> Result<TrayItem, anyhow::Error> {
     let mut tray = TrayItem::new("Quelana", "Quelana").map_err(|err| anyhow::anyhow!("Tray init failed: {:?}", err))?;
     let api_url_clone = api_url.clone();
     let api_key_clone = api_key.clone();
+    let max_tokens = max_output_tokens;
 
-    tray.add_menu_item("Record Question", move || {
+    tray.add_menu_item("Record Question", {
         let api_url = api_url_clone.clone();
         let api_key = api_key_clone.clone();
-        thread::spawn(move || {
-            if let Err(err) = run_record_and_answer(&api_url, &api_key, max_output_tokens) {
-                eprintln!("Tray recording failed: {}", err);
-            }
-        });
+        let tokens = max_tokens;
+        move || {
+            let api_url = api_url.clone();
+            let api_key = api_key.clone();
+            thread::spawn(move || {
+                if let Err(err) = run_record_and_answer(&api_url, &api_key, tokens) {
+                    eprintln!("Tray recording failed: {}", err);
+                }
+            });
+        }
     }).map_err(|err| anyhow::anyhow!("Tray add item failed: {:?}", err))?;
-    tray.add_menu_item("Quit", move || {
+    tray.add_menu_item("Quit", || {
         std::process::exit(0);
     }).map_err(|err| anyhow::anyhow!("Tray add item failed: {:?}", err))?;
     Ok(tray)

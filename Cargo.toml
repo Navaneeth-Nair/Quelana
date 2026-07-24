@@ -19,3 +19,8 @@ tempfile = "3.6"
 shell-words = "1.1"
 tray-item = "0.6"
 rdev = "0.5"
+eframe = "0.31"
+windows = { version = "0.58", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
+
+[build-dependencies]
+embed-resource = "2.4"

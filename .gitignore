@@ -1,2 +1,5 @@
 /target/
 .env
+resources.rc
+icon.ico
+errors.txt

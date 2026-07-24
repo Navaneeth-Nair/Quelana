@@ -1,4 +1,4 @@
-# Quelana Gemini Assistant (minimal MVP)
+# Quelana Assistant
 
 This project is a minimal Rust assistant that connects to a Gemini-compatible API. It is intentionally unobtrusive and only sends queries when you trigger it (press Enter in the prompt), so it does not record or monitor meetings without your explicit action.
 
